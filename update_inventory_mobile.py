@@ -232,6 +232,8 @@ def main() -> int:
     args = parser.parse_args()
 
     config_path = Path(args.config)
+    if not config_path.is_absolute():
+        config_path = Path(__file__).resolve().parent / config_path
     config = load_config(config_path)
 
     db_path = Path(args.db or config["db_path"])
@@ -279,6 +281,9 @@ def main() -> int:
     print_summary(len(rows), output_paths)
 
     if git_cfg.get("enabled"):
+        print(
+            f"Git push target: {git_cfg.get('remote', DEFAULT_GIT_REMOTE)} {git_cfg.get('branch', DEFAULT_GIT_BRANCH)}"
+        )
         add_paths = [Path(p) for p in (git_cfg.get("add") or [])]
         if not add_paths:
             add_paths = output_paths + [Path(log_file)] if log_file else output_paths
