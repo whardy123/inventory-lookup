@@ -1,0 +1,33 @@
+{
+  "db_path": "\\\\main\\Office Files\\Vagabond Group\\VHData.accdb",
+  "output_files": [
+    "Inventory_Mobile.html",
+    "index.html"
+  ],
+  "log_file": "inventory_update.log",
+  "git": {
+    "enabled": true,
+    "remote": "origin",
+    "branch": "gh-pages",
+    "commit_message": "Update inventory HTML",
+    "add": [
+      "Inventory_Mobile.html",
+      "index.html",
+      "inventory_update.log",
+      "inventory_config.json",
+      "update_inventory_mobile.py"
+    ]
+  },
+  "table": "ProductInventory",
+  "fields": {
+    "code": "ProductCode",
+    "name": "DES",
+    "qty": "InStock",
+    "location": "Location"
+  },
+  "filter": {
+    "field": "OnDropdown",
+    "value": true
+  },
+  "order_by": "ProductCode"
+}
