@@ -21,6 +21,7 @@ FIELD_CODE = "ProductCode"
 FIELD_NAME = "DES"
 FIELD_QTY = "InStock"
 FIELD_LOCATION = "Location"
+FIELD_RETIRED = "Retired"
 FILTER_FIELD = "OnDropdown"
 FILTER_VALUE = True
 ORDER_FIELD = "ProductCode"
@@ -48,7 +49,7 @@ def quantity_class(qty: int) -> str:
     return ""
 
 
-def build_item_html(code: str, name: str, qty: int, location: str) -> str:
+def build_item_html(code: str, name: str, qty: int, location: str, retired) -> str:
     code_text = html.escape(code or "")
     name_text = html.escape(name or "")
     location_text = html.escape(location or "")
@@ -56,13 +57,16 @@ def build_item_html(code: str, name: str, qty: int, location: str) -> str:
         f"{code_text} {name_text} {location_text}".lower().strip(),
         quote=True,
     )
+    retired_flag = "true" if bool(retired) else "false"
+    retired_badge = " <span class=\"retired\">Retired</span>" if retired_flag == "true" else ""
     qty_value = to_int(qty)
     qty_class = quantity_class(qty_value)
     qty_class_attr = f" {qty_class}" if qty_class else ""
+    zero_retired_class = " zero-retired" if retired_flag == "true" and qty_value == 0 else ""
 
     lines = [
-        "        <div class=\"inventory-item\" data-search=\"" + search_text + "\">",
-        f"            <div class=\"product-code\">{code_text}</div>",
+        "        <div class=\"inventory-item" + zero_retired_class + "\" data-search=\"" + search_text + "\" data-retired=\"" + retired_flag + "\">",
+        f"            <div class=\"product-code\">{code_text}{retired_badge}</div>",
         f"            <div class=\"product-name\">{name_text}</div>",
         "            <div class=\"details\">",
         f"                <span class=\"quantity{qty_class_attr}\">Qty: {qty_value}</span>",
@@ -74,7 +78,7 @@ def build_item_html(code: str, name: str, qty: int, location: str) -> str:
 
 
 def build_items_block(rows) -> str:
-    items = [build_item_html(r[0], r[1], r[2], r[3]) for r in rows]
+    items = [build_item_html(r[0], r[1], r[2], r[3], r[4]) for r in rows]
     if not items:
         return ""
     return "\n\n" + "\n\n".join(items) + "\n"
@@ -128,6 +132,7 @@ def load_config(config_path: Path) -> dict:
             "name": FIELD_NAME,
             "qty": FIELD_QTY,
             "location": FIELD_LOCATION,
+            "retired": FIELD_RETIRED,
         },
         "filter": {"field": FILTER_FIELD, "value": FILTER_VALUE},
         "order_by": ORDER_FIELD,
@@ -144,6 +149,7 @@ def load_config(config_path: Path) -> dict:
         "name": fields.get("name", FIELD_NAME),
         "qty": fields.get("qty", FIELD_QTY),
         "location": fields.get("location", FIELD_LOCATION),
+        "retired": fields.get("retired", FIELD_RETIRED),
     }
     filter_cfg = config.get("filter") or {}
     config["filter"] = {
@@ -260,7 +266,8 @@ def main() -> int:
 
     query = (
         "SELECT "
-        f"{bracket(fields['code'])}, {bracket(fields['name'])}, {bracket(fields['qty'])}, {bracket(fields['location'])} "
+        f"{bracket(fields['code'])}, {bracket(fields['name'])}, {bracket(fields['qty'])}, "
+        f"{bracket(fields['location'])}, {bracket(fields['retired'])} "
         f"FROM {bracket(table_name)} "
         f"WHERE {bracket(filter_field)} = ?"
     )
