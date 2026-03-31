@@ -192,6 +192,13 @@ def run_git(args, cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
     )
 
 
+def resolve_path(value, base_dir: Path) -> Path:
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    return base_dir / path
+
+
 def git_commit_and_push(
     repo_root: Path,
     paths_to_add,
@@ -237,20 +244,23 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    script_dir = Path(__file__).resolve().parent
     config_path = Path(args.config)
     if not config_path.is_absolute():
-        config_path = Path(__file__).resolve().parent / config_path
+        config_path = script_dir / config_path
     config = load_config(config_path)
 
-    db_path = Path(args.db or config["db_path"])
+    base_dir = script_dir
+
+    db_path = resolve_path(args.db or config["db_path"], base_dir)
     output_files = args.output or config["output_files"]
-    output_paths = [Path(p) for p in output_files]
+    output_paths = [resolve_path(p, base_dir) for p in output_files]
     table_name = config["table"]
     fields = config["fields"]
     filter_field = config["filter"]["field"]
     filter_value = config["filter"]["value"]
     order_field = config.get("order_by")
-    log_file = config.get("log_file")
+    log_file = resolve_path(config["log_file"], base_dir) if config.get("log_file") else None
     git_cfg = config.get("git") or {}
 
     if not db_path.exists():
@@ -283,7 +293,7 @@ def main() -> int:
         update_html(output_path, items_html, len(rows))
 
     if log_file:
-        write_log(Path(log_file), len(rows), output_paths)
+        write_log(log_file, len(rows), output_paths)
 
     print_summary(len(rows), output_paths)
 
@@ -291,11 +301,11 @@ def main() -> int:
         print(
             f"Git push target: {git_cfg.get('remote', DEFAULT_GIT_REMOTE)} {git_cfg.get('branch', DEFAULT_GIT_BRANCH)}"
         )
-        add_paths = [Path(p) for p in (git_cfg.get("add") or [])]
+        add_paths = [resolve_path(p, base_dir) for p in (git_cfg.get("add") or [])]
         if not add_paths:
             add_paths = output_paths + [Path(log_file)] if log_file else output_paths
         git_commit_and_push(
-            repo_root=Path.cwd(),
+            repo_root=base_dir,
             paths_to_add=add_paths,
             commit_message=git_cfg.get("commit_message", DEFAULT_GIT_COMMIT_MESSAGE),
             remote=git_cfg.get("remote", DEFAULT_GIT_REMOTE),
