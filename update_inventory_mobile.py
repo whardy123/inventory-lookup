@@ -84,21 +84,12 @@ def build_items_block(rows) -> str:
     return "\n\n" + "\n\n".join(items) + "\n"
 
 
-def update_html(output_path: Path, items_html: str, total_items: int) -> None:
-    html_text = output_path.read_text(encoding="utf-8")
-
-    updated_text = dt.datetime.now().strftime("Updated: %B %d, %Y at %I:%M %p")
-    html_text = re.sub(
-        r"(<div class=\"updated\">)Updated:.*?(</div>)",
-        r"\g<1>" + updated_text + r"\g<2>",
-        html_text,
-        flags=re.IGNORECASE,
-    )
-
+def update_html(output_path: Path, items_html: str, total_items: int) -> bool:
+    original_html = output_path.read_text(encoding="utf-8")
     html_text = re.sub(
         r"(<span id=\"resultCount\">)\d+(</span>)",
         r"\g<1>" + str(total_items) + r"\g<2>",
-        html_text,
+        original_html,
     )
 
     pattern = re.compile(
@@ -111,7 +102,19 @@ def update_html(output_path: Path, items_html: str, total_items: int) -> None:
 
     html_text = pattern.sub(r"\1" + items_html + r"\3", html_text)
 
+    if html_text == original_html:
+        return False
+
+    updated_text = dt.datetime.now().strftime("Updated: %B %d, %Y at %I:%M %p")
+    html_text = re.sub(
+        r"(<div class=\"updated\">)Updated:.*?(</div>)",
+        r"\g<1>" + updated_text + r"\g<2>",
+        html_text,
+        flags=re.IGNORECASE,
+    )
+
     output_path.write_text(html_text, encoding="utf-8")
+    return True
 
 
 def load_config(config_path: Path) -> dict:
@@ -180,6 +183,11 @@ def write_log(log_path: Path, total_items: int, output_paths) -> None:
 def print_summary(total_items: int, output_paths) -> None:
     outputs = ", ".join(str(p) for p in output_paths)
     print(f"Updated {total_items} items -> {outputs}")
+
+
+def print_no_change_summary(total_items: int, output_paths) -> None:
+    outputs = ", ".join(str(p) for p in output_paths)
+    print(f"No inventory changes for {total_items} items -> {outputs}")
 
 
 def run_git(args, cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
@@ -302,15 +310,19 @@ def main() -> int:
         rows = cursor.execute(query, filter_value).fetchall()
 
     items_html = build_items_block(rows)
+    html_changed = False
     for output_path in output_paths:
-        update_html(output_path, items_html, len(rows))
+        if update_html(output_path, items_html, len(rows)):
+            html_changed = True
 
-    if log_file:
-        write_log(log_file, len(rows), output_paths)
+    if html_changed:
+        if log_file:
+            write_log(log_file, len(rows), output_paths)
+        print_summary(len(rows), output_paths)
+    else:
+        print_no_change_summary(len(rows), output_paths)
 
-    print_summary(len(rows), output_paths)
-
-    if git_cfg.get("enabled"):
+    if git_cfg.get("enabled") and html_changed:
         print(
             f"Git push target: {git_cfg.get('remote', DEFAULT_GIT_REMOTE)} {git_cfg.get('branch', DEFAULT_GIT_BRANCH)}"
         )
