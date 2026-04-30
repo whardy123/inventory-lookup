@@ -199,6 +199,15 @@ def resolve_path(value, base_dir: Path) -> Path:
     return base_dir / path
 
 
+def resolve_config_path(value, config_path: Path, fallback_base_dir: Path) -> Path:
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    if config_path.exists():
+        return config_path.parent / path
+    return fallback_base_dir / path
+
+
 def git_commit_and_push(
     repo_root: Path,
     paths_to_add,
@@ -250,17 +259,21 @@ def main() -> int:
         config_path = script_dir / config_path
     config = load_config(config_path)
 
-    base_dir = script_dir
+    base_dir = script_dir.parent
 
     db_path = resolve_path(args.db or config["db_path"], base_dir)
     output_files = args.output or config["output_files"]
-    output_paths = [resolve_path(p, base_dir) for p in output_files]
+    output_paths = [resolve_config_path(p, config_path, script_dir) for p in output_files]
     table_name = config["table"]
     fields = config["fields"]
     filter_field = config["filter"]["field"]
     filter_value = config["filter"]["value"]
     order_field = config.get("order_by")
-    log_file = resolve_path(config["log_file"], base_dir) if config.get("log_file") else None
+    log_file = (
+        resolve_config_path(config["log_file"], config_path, script_dir)
+        if config.get("log_file")
+        else None
+    )
     git_cfg = config.get("git") or {}
 
     if not db_path.exists():
@@ -301,11 +314,12 @@ def main() -> int:
         print(
             f"Git push target: {git_cfg.get('remote', DEFAULT_GIT_REMOTE)} {git_cfg.get('branch', DEFAULT_GIT_BRANCH)}"
         )
-        add_paths = [resolve_path(p, base_dir) for p in (git_cfg.get("add") or [])]
+        repo_root = config_path.parent if config_path.exists() else script_dir
+        add_paths = [resolve_config_path(p, config_path, script_dir) for p in (git_cfg.get("add") or [])]
         if not add_paths:
             add_paths = output_paths + [Path(log_file)] if log_file else output_paths
         git_commit_and_push(
-            repo_root=base_dir,
+            repo_root=repo_root,
             paths_to_add=add_paths,
             commit_message=git_cfg.get("commit_message", DEFAULT_GIT_COMMIT_MESSAGE),
             remote=git_cfg.get("remote", DEFAULT_GIT_REMOTE),
