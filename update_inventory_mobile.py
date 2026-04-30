@@ -65,14 +65,14 @@ def build_item_html(code: str, name: str, qty: int, location: str, retired) -> s
     zero_retired_class = " zero-retired" if retired_flag == "true" and qty_value == 0 else ""
 
     lines = [
-        "        <div class=\"inventory-item" + zero_retired_class + "\" data-search=\"" + search_text + "\" data-retired=\"" + retired_flag + "\">",
-        f"            <div class=\"product-code\">{code_text}{retired_badge}</div>",
-        f"            <div class=\"product-name\">{name_text}</div>",
-        "            <div class=\"details\">",
-        f"                <span class=\"quantity{qty_class_attr}\">Qty: {qty_value}</span>",
-        f"                <span class=\"location\">{location_text}</span>",
-        "            </div>",
-        "        </div>",
+        "<div class=\"inventory-item" + zero_retired_class + "\" data-search=\"" + search_text + "\" data-retired=\"" + retired_flag + "\">",
+        f"    <div class=\"product-code\">{code_text}{retired_badge}</div>",
+        f"    <div class=\"product-name\">{name_text}</div>",
+        "    <div class=\"details\">",
+        f"        <span class=\"quantity{qty_class_attr}\">Qty: {qty_value}</span>",
+        f"        <span class=\"location\">{location_text}</span>",
+        "    </div>",
+        "</div>",
     ]
     return "\n".join(lines)
 
