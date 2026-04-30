@@ -81,7 +81,7 @@ def build_items_block(rows) -> str:
     items = [build_item_html(r[0], r[1], r[2], r[3], r[4]) for r in rows]
     if not items:
         return ""
-    return "\n\n" + "\n\n".join(items) + "\n"
+    return "\n\n".join(items)
 
 
 def update_html(output_path: Path, items_html: str, total_items: int) -> bool:
