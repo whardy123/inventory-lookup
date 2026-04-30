@@ -259,6 +259,11 @@ def main() -> int:
         action="append",
         help="Path to HTML output (repeatable)",
     )
+    parser.add_argument(
+        "--no-git",
+        action="store_true",
+        help="Skip git commit and push even if enabled in config",
+    )
     args = parser.parse_args()
 
     script_dir = Path(__file__).resolve().parent
@@ -322,7 +327,7 @@ def main() -> int:
     else:
         print_no_change_summary(len(rows), output_paths)
 
-    if git_cfg.get("enabled") and html_changed:
+    if git_cfg.get("enabled") and html_changed and not args.no_git:
         print(
             f"Git push target: {git_cfg.get('remote', DEFAULT_GIT_REMOTE)} {git_cfg.get('branch', DEFAULT_GIT_BRANCH)}"
         )
