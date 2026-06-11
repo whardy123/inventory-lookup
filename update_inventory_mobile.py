@@ -21,6 +21,7 @@ FIELD_CODE = "ProductCode"
 FIELD_NAME = "DES"
 FIELD_QTY = "InStock"
 FIELD_LOCATION = "Location"
+FIELD_PRICE = "Stocking_Dealer_Price"
 FIELD_RETIRED = "Retired"
 FILTER_FIELD = "OnDropdown"
 FILTER_VALUE = True
@@ -49,12 +50,32 @@ def quantity_class(qty: int) -> str:
     return ""
 
 
-def build_item_html(code: str, name: str, qty: int, location: str, retired) -> str:
+def format_price(value) -> str:
+    if value is None:
+        return "N/A"
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return "N/A"
+        if stripped.startswith("$"):
+            return stripped
+        try:
+            return f"${float(stripped):,.2f}"
+        except ValueError:
+            return stripped
+    try:
+        return f"${float(value):,.2f}"
+    except (TypeError, ValueError):
+        return "N/A"
+
+
+def build_item_html(code: str, name: str, qty: int, location: str, price, retired) -> str:
     code_text = html.escape(code or "")
     name_text = html.escape(name or "")
     location_text = html.escape(location or "")
+    price_text = html.escape(format_price(price))
     search_text = html.escape(
-        f"{code_text} {name_text} {location_text}".lower().strip(),
+        f"{code_text} {name_text} {location_text} {price_text}".lower().strip(),
         quote=True,
     )
     retired_flag = "true" if bool(retired) else "false"
@@ -71,6 +92,7 @@ def build_item_html(code: str, name: str, qty: int, location: str, retired) -> s
         "    <div class=\"details\">",
         f"        <span class=\"quantity{qty_class_attr}\">Qty: {qty_value}</span>",
         f"        <span class=\"location\">{location_text}</span>",
+        f"        <span class=\"price\">SDP: {price_text}</span>",
         "    </div>",
         "</div>",
     ]
@@ -78,7 +100,7 @@ def build_item_html(code: str, name: str, qty: int, location: str, retired) -> s
 
 
 def build_items_block(rows) -> str:
-    items = [build_item_html(r[0], r[1], r[2], r[3], r[4]) for r in rows]
+    items = [build_item_html(r[0], r[1], r[2], r[3], r[4], r[5]) for r in rows]
     if not items:
         return ""
     return "\n\n".join(items)
@@ -135,6 +157,7 @@ def load_config(config_path: Path) -> dict:
             "name": FIELD_NAME,
             "qty": FIELD_QTY,
             "location": FIELD_LOCATION,
+            "price": FIELD_PRICE,
             "retired": FIELD_RETIRED,
         },
         "filter": {"field": FILTER_FIELD, "value": FILTER_VALUE},
@@ -152,6 +175,7 @@ def load_config(config_path: Path) -> dict:
         "name": fields.get("name", FIELD_NAME),
         "qty": fields.get("qty", FIELD_QTY),
         "location": fields.get("location", FIELD_LOCATION),
+        "price": fields.get("price", FIELD_PRICE),
         "retired": fields.get("retired", FIELD_RETIRED),
     }
     filter_cfg = config.get("filter") or {}
@@ -303,7 +327,7 @@ def main() -> int:
     query = (
         "SELECT "
         f"{bracket(fields['code'])}, {bracket(fields['name'])}, {bracket(fields['qty'])}, "
-        f"{bracket(fields['location'])}, {bracket(fields['retired'])} "
+        f"{bracket(fields['location'])}, {bracket(fields['price'])}, {bracket(fields['retired'])} "
         f"FROM {bracket(table_name)} "
         f"WHERE {bracket(filter_field)} = ?"
     )

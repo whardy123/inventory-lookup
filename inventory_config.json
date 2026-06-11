@@ -23,7 +23,8 @@
     "code": "ProductCode",
     "name": "DES",
     "qty": "InStock",
-    "location": "Location"
+    "location": "Location",
+    "price": "Stocking_Dealer_Price"
   },
   "filter": {
     "field": "OnDropdown",
